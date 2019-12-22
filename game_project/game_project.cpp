@@ -1,9 +1,10 @@
-﻿#include <iostream> //что-то
+#include <iostream> //что-то
 #include <sstream> //еще что-то
 #include <list> //подключаем списки библиотеки STL
 #include <SFML/Graphics.hpp> //подключаем графику sfml
 #include <ctime> //подключаем время
 #include <math.h> //библиотека с математическими функциями
+#include "map.h" //подключаем файл с картой
 using namespace std; //пространство имен std, чтобы не писать каждый раз std::
 using namespace sf; //пространство имен sf, чтобы не писать каждый раз sf::
 
@@ -40,12 +41,30 @@ public:
 		sprite.setTextureRect(IntRect(0, 0, w, h));
 	}
 
+	void physical_obj(float Dx, float Dy) //проверка на столкновения с объектом
+	{
+		for (int i = y / 64; i < (y + h) / 64; i++)
+		{
+			for (int j = x / 64; j < (x + w) / 64; j++)
+			{
+				if (TileMap[i][j] == '0' || TileMap[i][j] == 'd')
+				{
+					if (Dy > 0) y = i * 64 - h;
+					if (Dy < 0) y = i * 64 + 64;
+					if (Dx > 0) x = j * 64 - w;
+					if (Dx < 0) x = j * 64 + 64;
+				}
+			}
+		}
+	}
+
 	void control(float time, float Dx, float Dy) //перемещение персонажа
 	{
-		x += Dx * time; //изменяем координату х на скорость, умноженную на время
-		y += Dy * time; //изменяем координату у на скорость, умноженную на время
-		speed = 0; //делаем скорость 0, чтобы персонаж останавливался, когда мы отпускаем клавишу
-		sprite.setPosition(x, y); //задаем позицию спрайту
+		x += Dx * time;
+		y += Dy * time;
+		speed = 0;
+		sprite.setPosition(x, y);
+		physical_obj(Dx, Dy);
 	}
 
 	void update(float time)
@@ -82,6 +101,12 @@ public:
 		if (health <= 0) { life = false; } //если здоровье <= 0, то смерть
 		if (health > 100) health = 100; //если здоровье переваливает за 100 делаем здоровье = 100, ибо больше 100 быть не должно
 		if (!life) health = 0; //для того, чтобы хп в минус не уходили (если мертв, хп = 0)
+
+		sweem += time; //переменная и условия для эффекта плавания
+		if (sweem > 150) sprite.setPosition(x, y + 3);
+		if (sweem > 300) sprite.setPosition(x, y + 3);
+		if (sweem > 450) sprite.setPosition(x, y - 3);
+		if (sweem > 600) { sprite.setPosition(x, y - 3); sweem = 0; }
 	}
 
 	Sprite get_sprite()
@@ -99,6 +124,13 @@ public:
 
 bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
+	Image map_image; //объект изображение (для карты)
+	map_image.loadFromFile("images/map.png"); //загружаем картинку элементов карты
+	Texture t_map; //объект текстура
+	t_map.loadFromImage(map_image); //загружаем изображение в текстуру
+	Sprite s_map; //объект спрайт
+	s_map.setTexture(t_map); //загружаем текстуру в спрайт
+
 	Image heroimage; //объект изображение (для игрока)
 	heroimage.loadFromFile("images/fish.png"); //выбираем изображение для игрока
 
@@ -127,6 +159,18 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		p.update(time); //метод update класса player
 
 		window.clear(); //отчищаем окно от предыдущего кадра
+
+		for (int i = 0; i < height_map; i++) //циклы для прорисовки карты
+		{
+			for (int j = 0; j < width_map; j++)
+			{
+				if (TileMap[i][j] == ' ') s_map.setTextureRect(IntRect(0, 0, 64, 64)); //обычная вода
+				if (TileMap[i][j] == '0') s_map.setTextureRect(IntRect(64, 0, 128, 64)); //водоросли(препятствие)
+
+				s_map.setPosition(j * 64, i * 64); //расставляем блоки текстур
+				window.draw(s_map); //рисуем карту
+			}
+		}
 
 		window.draw(p.get_sprite()); //рисуем персонажа
 
