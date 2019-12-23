@@ -18,6 +18,7 @@ protected:
 	int randomx; //случайный элемент по x
 	bool life; //игрок жив или нет
 	bool eaten; //еда съедена или нет
+	bool kusy; //акула кусь или не кусь
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -26,7 +27,7 @@ public:
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
 		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0;
-		life = true; eaten = false;
+		life = true; eaten = false; kusy = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
 	}
@@ -123,6 +124,29 @@ public:
 		if (sweem > 300) sprite.setPosition(x, y + 3);
 		if (sweem > 450) sprite.setPosition(x, y - 3);
 		if (sweem > 600) { sprite.setPosition(x, y - 3); sweem = 0; }
+
+		movetimer += time; //счетчик времени (начинает накапливать в себе 2 секунды, если персонаж соприкоснулся с акулой)
+		if (kusy == true) //если все-таки кусь
+		{
+			for (int i = 1; i <= 10; i++) //считаем от 1 до 10 включительно (для эффекта моргания неуязвимости)
+			{
+				if (i % 2 != 0) //если нечетная итерация
+				{
+					if (movetimer > 200 * (i - 1) && movetimer < 200 * i) { sprite.setColor(Color::Transparent); } //спрайт прозрачный
+				}
+				else //иначе, если четная
+				{
+					if (movetimer > 200 * (i - 1) && movetimer < 200 * i) { sprite.setColor(Color::White); } //спрайт обычный
+				}
+			}
+			if (movetimer > 2000) //если уже прошло 2 секунды
+			{
+				sprite.setColor(Color::White); //делаем спрайт обычным
+				kusy = false; //кусь проходит, боль уходит
+				movetimer = 0; //обнуляем счетчик
+			}
+		}
+		else movetimer = 0; //если не кусь, то и зачем считать тогда
 	}
 
 	int generatorhavki()
@@ -148,6 +172,10 @@ public:
 	{
 		return health;
 	}
+	void dec_health(int znach)
+	{
+		health -= znach;
+	}
 	void inc_count_gametime()
 	{
 		count_gametime++;
@@ -159,6 +187,14 @@ public:
 	void inc_health(int znach)
 	{
 		health += znach;
+	}
+	void set_kusy(bool Kusy)
+	{
+		kusy = Kusy;
+	}
+	bool get_kusy()
+	{
+		return kusy;
 	}
 };
 
@@ -413,6 +449,14 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		for (it = entities.begin(); it != entities.end(); ++it) //прогоняем список врагов (entities) от начала до конца
 		{
 			(*it)->update(time); //вызываем метод update для каждого объекта списка entities (для каждого врага), если он не оглушен
+			if (!p.get_kusy()) //если мы НЕ находимся под неуязвимостью от кусь
+			{
+				if ((*it)->getrect().intersects(p.getrect()) && p.get_life()) //если спрайт врага пересекается с персонажем и персонаж жив
+				{
+					p.dec_health(10); // -10 ХП
+					p.set_kusy(true); //КУСЬ!
+				}
+			}
 		}
 
 		p.update(time); //метод update класса player
