@@ -17,11 +17,14 @@ protected:
 	int health, w, h; //здоровье; ширина спрайта; высота спрайта
 	int count_gametime; //счетчик времени игры
 	int randomx; //случайный элемент по x
+	int bubbles; //счетчик зарядов пузырей (максимум 2)
+	int check_bubble_fly; //проверка на то, в какую сторону лететь пузырю (зависит от того, куда плыл персонаж)
 	bool life; //игрок жив или нет
 	bool eaten; //еда съедена или нет
 	bool kusy; //акула кусь или не кусь
 	bool buff; //баф есть у нас или нету
 	bool buff_drop; //баф выпал на карту или нет
+	bool bubble_crash; //пузырь столкнулся со стеной или нет
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -29,8 +32,8 @@ public:
 	entity(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) //конструктор с параметрами
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
-		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0;
-		life = true; eaten = false; kusy = false; buff = false; buff_drop = false;
+		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0; bubbles = 0; check_bubble_fly = 0;
+		life = true; eaten = false; kusy = false; buff = false; buff_drop = false; bubble_crash = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
 	}
@@ -46,6 +49,14 @@ public:
 	void set_eaten(bool arg) //задать значение пересеклись или нет с объектом класса object
 	{
 		eaten = arg;
+	}
+	bool get_bubble_crash() //узнать, врезался ли летящий снаряд (пузырь) в препятствие
+	{
+		return bubble_crash;
+	}
+	void set_bubble_crash(bool BC) //задать значение врезался ли летящий снаряд в препятствие
+	{
+		bubble_crash = BC;
 	}
 
 	virtual void update(float time) = 0; //виртуальная ф-ия update для переопределения в дочерних классах
@@ -94,6 +105,7 @@ public:
 			if (Keyboard::isKeyPressed(Keyboard::A) || Keyboard::isKeyPressed(Keyboard::Left)) //движение влево (кнопка A)
 			{
 				sprite.setTextureRect(IntRect(60, 0, -60, 42)); //повернуть спрайт рыбы влево
+				check_bubble_fly = 1; //это нужно для того, чтобы при стрельбе пузырями проверять, куда повернута рыба
 				speed = 0.15; //скорость движения
 				dx = -speed; dy = 0; //скорость по координатам
 				control(time, dx, dy); //вызываем ф-ию control и передаем ей время и скорость по координатам
@@ -101,6 +113,7 @@ public:
 			if (Keyboard::isKeyPressed(Keyboard::D) || Keyboard::isKeyPressed(Keyboard::Right)) //движение вправо (кнопка D)
 			{
 				sprite.setTextureRect(IntRect(0, 0, 60, 42)); //повернуть спрайт рыбы вправо
+				check_bubble_fly = 2; //это нужно для того, чтобы при стрельбе пузырями проверять, куда повернута рыба
 				speed = 0.15; //скорость движения
 				dx = speed; dy = 0; //скорость по координатам
 				control(time, dx, dy); //вызываем ф-ию control и передаем ей время и скорость по координатам
@@ -218,6 +231,30 @@ public:
 	float get_movetimer_buff()
 	{
 		return movetimer_buff;
+	}
+	void set_buff(bool Buff)
+	{
+		buff = Buff;
+	}
+	void set_bubbles()
+	{
+		bubbles = 2;
+	}
+	void dec_bubbles()
+	{
+		bubbles -= 1;
+	}
+	int get_bubbles()
+	{
+		return bubbles;
+	}
+	void set_movetimer_buff(float Movetimerbuff)
+	{
+		movetimer_buff = Movetimerbuff;
+	}
+	int get_check_bubble_fly()
+	{
+		return check_bubble_fly;
 	}
 };
 
@@ -346,10 +383,58 @@ public:
 	}
 };
 
+class cbubble :public entity
+{
+public:
+	cbubble(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) :entity(image, X, Y, W, H, Dx, Dy, Name)
+	{
+		sprite.setTextureRect(IntRect(0, 0, w, h));
+	}
+
+	void physical_obj(float Dx, float Dy) //проверка на столкновения с объектом
+	{
+		for (int i = y / 64; i < (y + h) / 64; i++)
+		{
+			for (int j = x / 64; j < (x + w) / 64; j++)
+			{
+				if (TileMap[i][j] == '0' || TileMap[i][j] == 'd')
+				{
+					if (Dx > 0) //если врезается слева
+					{
+						x = j * 64 - w; //останавливается
+						bubble_crash = true; //сообщаем, что врезались
+					}
+					if (Dx < 0) //если врезается справа
+					{
+						x = j * 64 + 64; //останавливается
+						bubble_crash = true; //сообщаем, что врезались
+					}
+				}
+			}
+		}
+	}
+
+	void update(float time)
+	{
+		x += dx * time;
+		physical_obj(dx, 0);
+		sprite.setPosition(x, y);
+	}
+
+	Sprite get_sprite()
+	{
+		return sprite;
+	}
+	String get_name()
+	{
+		return name;
+	}
+};
+
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
-bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
+bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
 	View view; //объект камера.
 	view.reset(FloatRect(64, 64, 1920, 1080)); //инициализация камеры. Поставить камеру, начиная с точки 64, 64, размер камеры 1920х1080
@@ -379,6 +464,9 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	Image buffimage; //объект изображение (для бафа)
 	buffimage.loadFromFile("images/bubble_bonus.png"); //выбираем изображение для бафа
 
+	Image ammoimage; //объект изображение (для снарядов пузырей)
+	ammoimage.loadFromFile("images/bubble_shot_2.png"); //выбираем изображение для снаряда пузыря
+
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
 
@@ -402,6 +490,8 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	{
 		objlist.push_back(new object(eatimage, p.generatorhavki(), 64, 20, 22, 0, 0.25, "eat_1")); //создаем заносим в список object 3 элемента (3 еды)
 	}
+
+	list<entity*> ammolist; //список, хранящий заряды пузырей
 
 	Clock clock; //переменная времени
 	int minutes = 0; //кол-во минут, прошедших с момента начала игры
@@ -436,6 +526,30 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 		{
 			if (event.type == Event::Closed) //если event закрылся
 				window.close(); //закрываем окно
+
+			if (p.get_buff() == true) //если мы подобрали баф
+			{
+				if (p.get_bubbles() > 0) //если кол-во снарядов > 0
+				{
+					if (event.type == Event::KeyPressed && event.key.code == Keyboard::Space) //если нажата клавиша пробел
+					{																		//создаем объект (снаряд) в месте координат игрока
+						if (p.get_check_bubble_fly() == 2) //если рыба смотрит вправо
+							ammolist.push_back(new cbubble(ammoimage, p.get_sprite().getPosition().x + 60, p.get_sprite().getPosition().y + 13, 16, 16, 0.35, 0, "ammo_right"));
+						//создать и занести в список объект класса cbubble. Имя объекта: ammo_right нужно для того, чтобы определить
+						//в какую сторону лететь пузырю (вправо)
+						else //если рыба смотрит влево
+							ammolist.push_back(new cbubble(ammoimage, p.get_sprite().getPosition().x, p.get_sprite().getPosition().y + 13, 16, 16, 0.35, 0, "ammo_left"));
+						//создать и занести в список объект класса cbubble. Имя объекта: ammo_left нужно для того, чтобы определить
+						//в какую сторону лететь пузырю (влево)
+						p.dec_bubbles(); //уменьшаем кол-во снарядов на -1
+					}
+				}
+				else //если зарядов больше нет
+				{
+					p.set_buff_drop(false); //говорим, что баф можно выкидывать на карту через время
+					p.set_buff(false); //и у нас при себе тоже бафа нету
+				}
+			}
 		}
 
 		if (!p.get_buff()) //если бафа у нас при себе нету
@@ -461,7 +575,29 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 			{
 				if ((*it)->get_name() == "eat_1") { p.inc_health(16); } //если еда, прибавляем 16 хп (считаем еду)
 				(*it)->set_eaten(true); //сообщаем, что еда съедена, чтобы в следующий тик она удалилась (или баф подобран)
+				if ((*it)->get_name() == "buff_1") //если баф
+				{
+					p.set_buff(true); //он теперь у нас есть
+					p.set_bubbles(); //задаем 2 снаряда
+					p.set_movetimer_buff(0); //обнуляем счетчик выпадения бафа
+				}
 			}
+		}
+
+		for (it = ammolist.begin(); it != ammolist.end();) //проходимся по списку снарядов
+		{
+			entity* b = *it; //для удобства
+			if (b->get_name() == "ammo_right") //если игрок двигался вправо (та самая проверка имени при создании объекта класса cbubble)
+			{
+				b->update(time); //пускаем пузырь вправо (скорость по X положительная)
+			}
+			else //иначе, если имя снаряда ammo_left (то есть игрок двигался влево)
+			{
+				b->update(-time); //пускаем пузырь влево (скорость по X отрицательная)
+			}
+			if (b->get_bubble_crash()) { it = ammolist.erase(it); delete b; b->set_bubble_crash(false); }
+			//если пузырь врезался в стену, удаляем его из списка и из памяти, а так же проверку на столкновения делаем false
+			else it++; //иначе шагаем дальше по списку снарядов
 		}
 
 		if (objlist.size() < 3) //если кусочков еды в списке меньше 3-х
@@ -537,6 +673,7 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 
 		for (it = objlist.begin(); it != objlist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем еду
 		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
+		for (it = ammolist.begin(); it != ammolist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем пузыри
 		window.draw(p.get_sprite()); //рисуем персонажа
 
 		window.display(); //отображаем все что можно и что нельзя
@@ -544,7 +681,7 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	return false;
 }
 
-void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
