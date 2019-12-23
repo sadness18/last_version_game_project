@@ -32,6 +32,7 @@ protected:
 	bool bubble_crash; //пузырь столкнулся со стеной или нет
 	bool stun; //акула оглушена или нет
 	bool pause; //пауза или нет
+	bool pre_start; //создана для 3-х секундного отсчета времени перед началом игры (true отсчет идет / false игра началась)
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -42,6 +43,7 @@ public:
 		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0; bubbles = 0; check_bubble_fly = 0;
 		check_shark_stun = 0; movetimer_stun = 0; count_get_eat = 0; count_get_buff = 0; count_stun_shark = 0;
 		life = true; eaten = false; kusy = false; buff = false; buff_drop = false; bubble_crash = false; stun = false; pause = false;
+		pre_start = true;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
 	}
@@ -324,6 +326,14 @@ public:
 	{
 		return count_stun_shark;
 	}
+	bool get_pre_start()
+	{
+		return pre_start;
+	}
+	void set_pre_start()
+	{
+		pre_start = !pre_start;
+	}
 };
 
 class enemy :public entity //дочерний класс (враг)
@@ -504,7 +514,7 @@ public:
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
-bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
+bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
 	View view; //объект камера.
 	view.reset(FloatRect(64, 64, 1920, 1080)); //инициализация камеры. Поставить камеру, начиная с точки 64, 64, размер камеры 1920х1080
@@ -541,6 +551,26 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	Sprite ammo_count_sprite; //создаем спрайт, чтобы отображать кол-во имеющихся у нас снарядок
 	ammo_count_sprite.setTexture(ammo_count_texture); //помещаем в спрайт текстуру снарядов
 
+	Texture ps3_texture; //объект класса текстура для цифры 3 перед началом игры
+	ps3_texture.loadFromFile("images/ps_3.png"); //задаем сам файл изображения для цифры 3
+	Sprite ps3_sprite; //объект класса спрайт для цифры 3
+	ps3_sprite.setTexture(ps3_texture); //задаем текстуру спрайту
+
+	Texture ps2_texture; //объект класса текстура для цифры 2 перед началом игры
+	ps2_texture.loadFromFile("images/ps_2.png"); //задаем сам файл изображения для цифры 2
+	Sprite ps2_sprite; //объект класса спрайт для цифры 2
+	ps2_sprite.setTexture(ps2_texture); //задаем текстуру спрайту
+
+	Texture ps1_texture; //объект класса текстура для цифры 1 перед началом игры
+	ps1_texture.loadFromFile("images/ps_1.png"); //задаем сам файл изображения для цифры 1
+	Sprite ps1_sprite; //объект класса спрайт для цифры 1
+	ps1_sprite.setTexture(ps1_texture); //задаем текстуру спрайту
+
+	Texture ps0_texture; //объект класса текстура для надписи перед началом игры
+	ps0_texture.loadFromFile("images/ps_0.png"); //задаем сам файл изображения для надписи
+	Sprite ps0_sprite; //объект класса спрайт для надписи
+	ps0_sprite.setTexture(ps0_texture); //задаем текстуру спрайту
+
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
 	list<entity*>::iterator it_2; //второй итератор. Нужен для того, чтобы прогонять 2 разных списка одновременно (для проверки оглушения)
@@ -575,6 +605,8 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	int minutes = 0; //кол-во минут, прошедших с момента начала игры
 	int seconds = 0; //кол-во секунд, которые переводятся в минуты, когда достигают 60
 	int save_time = 0; //для сохранения времени
+	int count_pre_start = 0; //для накопления времени перед началом игры
+	int num_pre_start = 0; //номер картинки, которую необходимо выводить на экран. Значение задается вначале цикла, а проверяется в конце
 
 	  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	 ////////////////////////////////////////////////////ПОКА ОТКРЫТО ОКНО////////////////////////////////////////////////////
@@ -601,6 +633,33 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 		}
 		minutes = floor(p.get_count_gametime() / 60); //для вывода на экран времени в минутах (сам вывод в конце, где отрисовка объектов)
 		seconds = p.get_count_gametime() % 60; //для вывода на экран времени в секундах (до 60) (сам вывод в конце, где отрисовка объектов)
+
+		count_pre_start += time; //накапливаем время в переменной count_pre_start, чтобы в последующем вести отсчет до начала игры
+		if (p.get_pre_start()) //проверяем переменную pre_start на значение true
+		{
+			time = 0; //обнуляем время, чтобы никто и ничто не двигалось, пока отсчет не закончится и игра не начнется
+			if (count_pre_start <= 1250) //если переменная count_pre_start еще не накопила в себе 1250 мкс
+			{
+				ps3_sprite.setPosition(640, 300); //задаем позицию цифры 3 посередине экрана
+				num_pre_start = 3; //переменная num_pre_start принимает значение 3, чтобы в самом конце вывести необходимый спрайт
+			}
+			if (count_pre_start > 1250 && count_pre_start <= 2500) //если переменная накопила больше 1250 мкс, но меньше 2500 мкс
+			{
+				ps2_sprite.setPosition(640, 300); //задаем позицию цифры 2 посередине экрана
+				num_pre_start = 2; //переменная num_pre_start принимает значение 2, чтобы в самом конце вывести необходимый спрайт
+			}
+			if (count_pre_start > 2500 && count_pre_start <= 3750) //если переменная накопила больше 2500 мкс, но меньше 3750 мкс
+			{
+				ps1_sprite.setPosition(640, 300); //задаем позицию цифры 1 посередине экрана
+				num_pre_start = 1; //переменная num_pre_start принимает значение 1, чтобы в самом конце вывести необходимый спрайт
+			}
+			if (count_pre_start > 3750) //если переменная накопила больше 3750 мкс
+			{
+				num_pre_start = 4; //переменная num_pre_start принимает значение 4, чтобы в самом конце вывести необходимый спрайт (надпись)
+				ps0_sprite.setPosition(210, 300); //задаем позицию финальной надписи
+				p.set_pre_start(); //и в это время делаем переменную pre_start = false, чтобы игра началась
+			}
+		}
 
 		Event event; //объект класса event
 		while (window.pollEvent(event)) //пока что-то там event
@@ -843,6 +902,63 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 
 		window.draw(p.get_sprite()); //рисуем персонажа
 
+		if (num_pre_start == 3) //проверка на то, какое число выводить на экран до начала игры (3)
+			window.draw(ps3_sprite); //собственно рисуем это число (3)
+		if (num_pre_start == 2) //проверка на то, какое число выводить на экран до начала игры (2)
+			window.draw(ps2_sprite); //собственно рисуем это число (2)
+		if (num_pre_start == 1) //проверка на то, какое число выводить на экран до начала игры (1)
+			window.draw(ps1_sprite); //собственно рисуем это число (1)
+		if (num_pre_start == 4) //проверка на то, какое число выводить на экран до начала игры (надпись)
+		{
+			//Далее много условий на временнЫе интервалы для создания эффекта постепенного исчезновения надписи (увеличение прозрачности)
+			if (count_pre_start > 3750 && count_pre_start <= 4000) //если переменная count_pre_start накопила > 3750 мкс, но <= 4000 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 255)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 4000 && count_pre_start <= 4250) //если переменная count_pre_start накопила > 4000 мкс, но <= 4250 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 220)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 4250 && count_pre_start <= 4500) //если переменная count_pre_start накопила > 4250 мкс, но <= 4500 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 190)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 4500 && count_pre_start <= 4750) //если переменная count_pre_start накопила > 4500 мкс, но <= 4750 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 160)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 4750 && count_pre_start <= 5000) //если переменная count_pre_start накопила > 4750 мкс, но <= 5000 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 130)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 5000 && count_pre_start <= 5250) //если переменная count_pre_start накопила > 5000 мкс, но <= 5250 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 100)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 5250 && count_pre_start <= 5500) //если переменная count_pre_start накопила > 5250 мкс, но <= 5500 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 70)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 5500 && count_pre_start <= 5750) //если переменная count_pre_start накопила > 5500 мкс, но <= 5750 мкс
+			{
+				ps0_sprite.setColor(Color(255, 255, 255, 40)); //задаем цвет и прозрачность спрайту с надписью (R, G, B, прозр-ть)
+				window.draw(ps0_sprite); //рисуем эту надпись
+			}
+			if (count_pre_start > 5750) //если переменная count_pre_start накопила > 5750 мкс
+			{
+				num_pre_start = 0; //сообщаем, что num_pre_start, ранее отвечающая за то, какую картинку выводить до начала игры = 0
+			}
+		}
+		if (num_pre_start == 0) //если никакую картинку уже рисовать не нужно
+			count_pre_start = 0; //обнуляем счетчик времени, отвечающий за интервал смены картинок до начала игры, чтобы он не рос во время игры
+
 		if (p.get_pause() || !p.get_life()) //если стоит пауза или если НЕ живи
 		{
 			//Сюда вставить метод класса menu, меняющий переменную на true, за счет чего будут выводиться кнопки меню из другого метода
@@ -863,7 +979,7 @@ bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в
 	return false;
 }
 
-void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
