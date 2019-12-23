@@ -15,6 +15,7 @@ protected:
 	float sweem, speed, movetimer; //эффект плавания; скорость; счетчик для разного
 	int health, w, h; //здоровье; ширина спрайта; высота спрайта
 	int count_gametime; //счетчик времени игры
+	int randomx; //случайный элемент по x
 	bool life; //игрок жив или нет
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
@@ -23,7 +24,7 @@ public:
 	entity(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) //конструктор с параметрами
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
-		movetimer = 0; health = 100; sweem = 0; count_gametime = 0;
+		movetimer = 0; health = 100; sweem = 0; count_gametime = 0; randomx = 0;
 		life = true;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -108,6 +109,13 @@ public:
 		if (sweem > 300) sprite.setPosition(x, y + 3);
 		if (sweem > 450) sprite.setPosition(x, y - 3);
 		if (sweem > 600) { sprite.setPosition(x, y - 3); sweem = 0; }
+	}
+
+	int generatorhavki()
+	{
+		randomx = 84 + rand() % 1836; //генератор еды. Числа такие, потому что нужно исключить вероятность краев
+		cout << randomx << endl;	 // и -20 пикселей слева и справа от краев видимой области (проще говоря FHD экран 1920 по иксу
+		return randomx;				//  а хавка генерируется в диапазоне с 84-го по 1836 пиксель включительно)
 	}
 
 	Sprite get_sprite()
@@ -219,6 +227,48 @@ public:
 	}
 };
 
+class object :public entity //дочерний класс (объекты: еда, пузырь)
+{
+public:
+	object(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) :entity(image, X, Y, W, H, Dx, Dy, Name)
+	{
+		sprite.setTextureRect(IntRect(0, 0, w, h));
+	}
+
+	void physical_obj(float Dx, float Dy) //проверка на столкновения с объектом
+	{
+		for (int i = y / 64; i < (y + h) / 64; i++)
+		{
+			for (int j = x / 64; j < (x + w) / 64; j++)
+			{
+				if (TileMap[i][j] == '0' || TileMap[i][j] == 'd')
+				{
+					if (Dy > 0) y = i * 64 - h;
+					if (Dy < 0) y = i * 64 + 64;
+					if (Dx > 0) x = j * 64 - w;
+					if (Dx < 0) x = j * 64 + 64;
+				}
+			}
+		}
+	}
+
+	void update(float time)
+	{
+		y += dy * time;
+		physical_obj(0, dy);
+		sprite.setPosition(x, y);
+	}
+
+	Sprite get_sprite()
+	{
+		return sprite;
+	}
+	String get_name()
+	{
+		return name;
+	}
+};
+
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -246,6 +296,9 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	Image enemyoneimage; //объект изображение (для врага)
 	enemyoneimage.loadFromFile("images/shark.png"); //выбираем изображение для врага
 
+	Image eatimage; //объект изображение (для еды)
+	eatimage.loadFromFile("images/eat.png"); //выбираем изображение для еды
+
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
 
@@ -261,6 +314,14 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	entities.push_back(new enemy(enemyoneimage, 1600, 768, 126, 48, 0.2, 0, "enemy_10")); //враг 10
 
 	player p(heroimage, 64, 1024, 60, 42, 0.15, 0, "player_1"); //создаем персонажа (объект подкласса player)
+
+	srand(time(0)); //псевдорандом (сброс предыдущего сгенерированного числа)
+
+	list<entity*> objlist; //список, хранящий в себе ссылки на динамические объекты класса object (еда, баф)
+	for (int i = 0; i <= 2; i++) //первоначальная генерация калорий (3 шт.)
+	{
+		objlist.push_back(new object(eatimage, p.generatorhavki(), 64, 20, 22, 0, 0.25, "eat_1")); //создаем заносим в список object 3 элемента (3 еды)
+	}
 
 	Clock clock; //переменная времени
 	int minutes = 0; //кол-во минут, прошедших с момента начала игры
@@ -295,6 +356,12 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		{
 			if (event.type == Event::Closed) //если event закрылся
 				window.close(); //закрываем окно
+		}
+
+		for (it = objlist.begin(); it != objlist.end(); it++) //прогоняем список объектов (objlist) от начала до конца
+		{
+			entity* b = *it; //просто, чтобы каждый раз писать не (*it)->, а b->
+			b->update(time); //вызываем ф-ию update для всех элементов списка objlist (объектов класса object)
 		}
 
 		for (it = entities.begin(); it != entities.end(); ++it) //прогоняем список врагов (entities) от начала до конца
@@ -342,6 +409,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 			window.draw(text); //рисуем текст
 		}
 
+		for (it = objlist.begin(); it != objlist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем еду
 		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
 		window.draw(p.get_sprite()); //рисуем персонажа
 
