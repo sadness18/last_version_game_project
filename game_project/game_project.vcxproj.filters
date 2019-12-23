@@ -23,5 +23,8 @@
     <ClInclude Include="map.h">
       <Filter>Исходные файлы</Filter>
     </ClInclude>
+    <ClInclude Include="life_bar.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

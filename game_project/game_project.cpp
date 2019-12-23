@@ -5,6 +5,7 @@
 #include <ctime> //подключаем время
 #include <math.h> //библиотека с математическими функциями
 #include "map.h" //подключаем файл с картой
+#include "life_bar.h"
 using namespace std; //пространство имен std, чтобы не писать каждый раз std::
 using namespace sf; //пространство имен sf, чтобы не писать каждый раз sf::
 
@@ -468,7 +469,7 @@ public:
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
-bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
+bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
 	View view; //объект камера.
 	view.reset(FloatRect(64, 64, 1920, 1080)); //инициализация камеры. Поставить камеру, начиная с точки 64, 64, размер камеры 1920х1080
@@ -500,6 +501,10 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 
 	Image ammoimage; //объект изображение (для снарядов пузырей)
 	ammoimage.loadFromFile("images/bubble_shot_2.png"); //выбираем изображение для снаряда пузыря
+	Texture ammo_count_texture; //задаем текстуру для кол-ва снарядов у нас (под рыбой)
+	ammo_count_texture.loadFromImage(ammoimage); //выбираем изображение (такое же, как и при самом выстреле)
+	Sprite ammo_count_sprite; //создаем спрайт, чтобы отображать кол-во имеющихся у нас снарядок
+	ammo_count_sprite.setTexture(ammo_count_texture); //помещаем в спрайт текстуру снарядов
 
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
@@ -517,6 +522,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	entities.push_back(new enemy(enemyoneimage, 1600, 768, 126, 48, 0.2, 0, "enemy_10")); //враг 10
 
 	player p(heroimage, 64, 1024, 60, 42, 0.15, 0, "player_1"); //создаем персонажа (объект подкласса player)
+	life_bar hp; //объект класса life_bar для отображения полосы здоровья
 
 	srand(time(0)); //псевдорандом (сброс предыдущего сгенерированного числа)
 
@@ -716,6 +722,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		}
 
 		p.update(time); //метод update класса player
+		hp.update(p.get_health(), p.get_sprite().getPosition().x, p.get_sprite().getPosition().y); //метод update для шкалы здоровья
 
 		window.setView(view); //устанавливаем камеру в нужное место (сдвигаем на 64 пикселя вниз и вправо, чтобы не было видно границ карты)
 
@@ -758,14 +765,31 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		for (it = objlist.begin(); it != objlist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем еду
 		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
 		for (it = ammolist.begin(); it != ammolist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем пузыри
+
+		window.draw(hp.get_sprite_hp()); //Рисуем полоску здоровья над персонажем
+		window.draw(hp.get_black_bar()); //Рисуем черную полоску поверх здоровья
+
+		if (p.get_bubbles() == 2) //если у нас 2 заряда выстрелов
+		{
+			ammo_count_sprite.setPosition(p.get_sprite().getPosition().x + 12, p.get_sprite().getPosition().y + 46); //позиционируем снаряд
+			window.draw(ammo_count_sprite); //рисуем первый снаряд
+			ammo_count_sprite.setPosition(p.get_sprite().getPosition().x + 32, p.get_sprite().getPosition().y + 46); //позиционируем снаряд
+			window.draw(ammo_count_sprite); //рисуем второй снаряд
+		}
+		if (p.get_bubbles() == 1) //если у нас 1 заряд выстрела
+		{
+			ammo_count_sprite.setPosition(p.get_sprite().getPosition().x + 12, p.get_sprite().getPosition().y + 46); //позиционируем снаряд
+			window.draw(ammo_count_sprite); //рисуем первый снаряд
+		}
+
 		window.draw(p.get_sprite()); //рисуем персонажа
 
-		window.display(); //отображаем все что можно и что нельзя...
+		window.display(); //отображаем все что можно и что нельзя
 	}
 	return false;
 }
 
-void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
