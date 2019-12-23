@@ -17,6 +17,7 @@ protected:
 	int count_gametime; //счетчик времени игры
 	int randomx; //случайный элемент по x
 	bool life; //игрок жив или нет
+	bool eaten; //еда съедена или нет
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -24,10 +25,23 @@ public:
 	entity(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) //конструктор с параметрами
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
-		movetimer = 0; health = 100; sweem = 0; count_gametime = 0; randomx = 0;
-		life = true;
+		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0;
+		life = true; eaten = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
+	}
+
+	FloatRect getrect() //ф-ия получения прямоугольной области спрайта (для проверки столкновений)
+	{
+		return FloatRect(x, y, w, h);
+	}
+	bool get_eaten() //пересеклись ли мы с объектом класса object (с едой или бафом)
+	{
+		return eaten;
+	}
+	void set_eaten(bool arg) //задать значение пересеклись или нет с объектом класса object
+	{
+		eaten = arg;
 	}
 
 	virtual void update(float time) = 0; //виртуальная ф-ия update для переопределения в дочерних классах
@@ -141,6 +155,10 @@ public:
 	int get_count_gametime()
 	{
 		return count_gametime;
+	}
+	void inc_health(int znach)
+	{
+		health += znach;
 	}
 };
 
@@ -358,10 +376,38 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 				window.close(); //закрываем окно
 		}
 
-		for (it = objlist.begin(); it != objlist.end(); it++) //прогоняем список объектов (objlist) от начала до конца
+		for (it = objlist.begin(); it != objlist.end();) //прогоняем список объектов
 		{
 			entity* b = *it; //просто, чтобы каждый раз писать не (*it)->, а b->
 			b->update(time); //вызываем ф-ию update для всех элементов списка objlist (объектов класса object)
+			if (b->get_eaten() == true) { it = objlist.erase(it); delete b; } //проверяем, если соприкоснулись с объектом (eaten == true), то
+			else it++; //удаляем из списка и из динамической памяти, в противном случа идем дальше по списку
+		}
+		for (it = objlist.begin(); it != objlist.end(); it++) //прогоняем список объектов (objlist) от начала до конца
+		{
+			if ((*it)->getrect().intersects(p.getrect())) //если спрайт объекта соприкасается со спрайтом персонажа
+			{
+				if ((*it)->get_name() == "eat_1") { p.inc_health(16); } //если еда, прибавляем 16 хп (считаем еду)
+				(*it)->set_eaten(true); //сообщаем, что еда съедена, чтобы в следующий тик она удалилась (или баф подобран)
+			}
+		}
+
+		if (objlist.size() < 3) //если кусочков еды в списке меньше 3-х
+		{
+			objlist.push_back(new object(eatimage, p.generatorhavki(), 64, 20, 22, 0, 0.25, "eat_1")); //создаем еду и заносим в конец списка
+		}
+		else //иначе (если в списке >= 3-х объектов)
+		{
+			if (objlist.size() == 3) //если объектов в списке ровно 3
+			{
+				for (it = objlist.begin(); it != objlist.end(); it++) //прогоняем список объектов
+				{
+					if ((*it)->get_name() != "eat_1") //проверяем: если хотя бы один объект не имеет имя eat_1 (значит на экране 2 еды и баф)
+					{
+						objlist.push_back(new object(eatimage, p.generatorhavki(), 64, 20, 22, 0, 0.25, "eat_1")); //создаем еду и заносим в конец списка
+					}
+				}
+			}
 		}
 
 		for (it = entities.begin(); it != entities.end(); ++it) //прогоняем список врагов (entities) от начала до конца
