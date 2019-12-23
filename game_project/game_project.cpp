@@ -23,6 +23,7 @@ protected:
 	int bubbles; //счетчик зарядов пузырей (максимум 2)
 	int check_bubble_fly; //проверка на то, в какую сторону лететь пузырю (зависит от того, куда плыл персонаж)
 	int check_shark_stun; //проверка на то, в какую сторону должна смотреть оглушенная акула (зависит от того, куда она плыла)
+	int count_get_eat, count_get_buff, count_stun_shark; //счетчик собранной еды, бафов и оглушений акул (для статистики)
 	bool life; //игрок жив или нет
 	bool eaten; //еда съедена или нет
 	bool kusy; //акула кусь или не кусь
@@ -39,7 +40,7 @@ public:
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
 		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0; bubbles = 0; check_bubble_fly = 0;
-		check_shark_stun = 0; movetimer_stun = 0;
+		check_shark_stun = 0; movetimer_stun = 0; count_get_eat = 0; count_get_buff = 0; count_stun_shark = 0;
 		life = true; eaten = false; kusy = false; buff = false; buff_drop = false; bubble_crash = false; stun = false; pause = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -299,6 +300,30 @@ public:
 	{
 		return pause;
 	}
+	void inc_count_get_eat()
+	{
+		count_get_eat++;
+	}
+	void inc_count_get_buff()
+	{
+		count_get_buff++;
+	}
+	void inc_count_stun_shark()
+	{
+		count_stun_shark++;
+	}
+	int get_count_get_eat()
+	{
+		return count_get_eat;
+	}
+	int get_count_get_buff()
+	{
+		return count_get_buff;
+	}
+	int get_count_stun_shark()
+	{
+		return count_stun_shark;
+	}
 };
 
 class enemy :public entity //дочерний класс (враг)
@@ -479,7 +504,7 @@ public:
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
-bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
+bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
 	View view; //объект камера.
 	view.reset(FloatRect(64, 64, 1920, 1080)); //инициализация камеры. Поставить камеру, начиная с точки 64, 64, размер камеры 1920х1080
@@ -638,13 +663,14 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		{
 			if ((*it)->getrect().intersects(p.getrect())) //если спрайт объекта соприкасается со спрайтом персонажа
 			{
-				if ((*it)->get_name() == "eat_1") { p.inc_health(16); } //если еда, прибавляем 16 хп (считаем еду)
+				if ((*it)->get_name() == "eat_1") { p.inc_health(16); p.inc_count_get_eat(); } //если еда, прибавляем 16 хп (считаем еду)
 				(*it)->set_eaten(true); //сообщаем, что еда съедена, чтобы в следующий тик она удалилась (или баф подобран)
 				if ((*it)->get_name() == "buff_1") //если баф
 				{
 					p.set_buff(true); //он теперь у нас есть
 					p.set_bubbles(); //задаем 2 снаряда
 					p.set_movetimer_buff(0); //обнуляем счетчик выпадения бафа
+					p.inc_count_get_buff(); //счетчик подобранных бафов
 				}
 			}
 		}
@@ -692,6 +718,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 				{
 					(*it)->set_stun(true); //акула оглушена
 					b->set_bubble_crash(true); //сообщаем, что врезались, чтобы пузырь удалился из списка и памяти
+					p.inc_count_stun_shark(); //считаем количество оглушений акул
 				}
 			}
 			for (it_2 = ammolist.begin(); it_2 != ammolist.end();) //прогоняем список снарядов (ammolist)
@@ -745,6 +772,11 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 			}
 		}
 
+		if (m.get_check_restart()) //если нажали клавишу "новая игра" во время паузы
+		{
+			return true; //завершаем ф-ию, возвращая true для создания рекурсии и повторного вызова этой ф-ии is_game (получается новая игра)
+		}
+
 		p.update(time); //метод update класса player
 		hp.update(p.get_health(), p.get_sprite().getPosition().x, p.get_sprite().getPosition().y); //метод update для шкалы здоровья
 
@@ -779,6 +811,9 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		playerhealth << p.get_health(); //строка числового вывода здоровья (только для тестов)
 		minutesstring << minutes; //строка подсчета минут игры
 		secondsstring << seconds; //строка подсчета секунд игры (до 60 секунд)
+		counteat << p.get_count_get_eat(); //строка подсчета съеденной еды
+		countbuff << p.get_count_get_buff(); //строка подсчета подобранных бафов
+		countstun << p.get_count_stun_shark(); //строка подсчета оглушений акул
 		if (p.get_life()) //если персонаж жив
 		{
 			text.setString(L"Здоровье: " + playerhealth.str() + L"\nВремя игры: " + minutesstring.str() + L" минут(ы) " + secondsstring.str() + L" секунд(ы) "); //выводим на экран
@@ -808,12 +843,27 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 
 		window.draw(p.get_sprite()); //рисуем персонажа
 
+		if (p.get_pause() || !p.get_life()) //если стоит пауза или если НЕ живи
+		{
+			//Сюда вставить метод класса menu, меняющий переменную на true, за счет чего будут выводиться кнопки меню из другого метода
+			m.pause_func(window); //вызываем ф-ию для реализации кнопок меню паузы (при смерти те же самые кнопки)
+			window.draw(m.get_pause_sprite_1()); //рисуем первую кнопку
+			window.draw(m.get_pause_sprite_2()); //рисуем вторую кнопку
+		}
+
+		if (!p.get_life()) //если игрок умер выводим статистику
+		{
+			text.setString(L"Ваш результат: " + minutesstring.str() + L" минут(ы) " + secondsstring.str() + L" секунд(ы) " + L"\nПодобрано еды: " + counteat.str() + L"\nПодобрано бафов: " + countbuff.str() + L"\nОглушений акул: " + countstun.str()); //выводим на экран
+			text.setPosition(598, 440); //задаем позицию текста на экране
+			window.draw(text); //рисуем текст
+		}
+
 		window.display(); //отображаем все что можно и что нельзя
 	}
 	return false;
 }
 
-void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
