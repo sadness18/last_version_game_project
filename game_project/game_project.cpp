@@ -119,6 +119,62 @@ public:
 	}
 };
 
+class enemy :public entity //дочерний класс (враг)
+{
+public:
+	enemy(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) :entity(image, X, Y, W, H, Dx, Dy, Name) //конструктор
+	{
+		sprite.setTextureRect(IntRect(0, 0, w, h));
+	}
+
+	void physical_obj(float Dx, float Dy) //проверка на столкновения с объектом
+	{
+		for (int i = y / 64; i < (y + h) / 64; i++)
+		{
+			for (int j = x / 64; j < (x + w) / 64; j++)
+			{
+				if (TileMap[i][j] == '0')
+				{
+					if (Dy > 0) y = i * 64 - h;
+					if (Dy < 0) y = i * 64 + 64;
+					if (Dx > 0)
+					{
+						x = j * 64 - w; dx = -Dx; //если акула врезалась в препятствие, то разворачиваем ее (влево)
+						sprite.setTextureRect(IntRect(126, 0, -126, 48)); //разворачиваем спрайт влево
+					}
+					if (Dx < 0)
+					{
+						x = j * 64 + 64; dx = -Dx; //если акула врезалась в препятствие, то разворачиваем ее (вправо)
+						sprite.setTextureRect(IntRect(0, 0, 126, 48));//разворачиваем спрайт вправо
+					}
+				}
+			}
+		}
+	}
+
+	void update(float time)
+	{
+		x += dx * time;
+		physical_obj(dx, 0);
+		sprite.setPosition(x, y);
+
+		sweem += time; //переменная и условия для эффекта плавания
+		if (sweem > 100) sprite.setPosition(x, y + 3); //+150
+		if (sweem > 250) sprite.setPosition(x, y + 3); //+300
+		if (sweem > 550) sprite.setPosition(x, y - 3); //+450
+		if (sweem > 1000) { sprite.setPosition(x, y - 3); sweem = 0; }
+	}
+
+	Sprite get_sprite()
+	{
+		return sprite;
+	}
+	String get_name()
+	{
+		return name;
+	}
+};
+
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -133,6 +189,14 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 
 	Image heroimage; //объект изображение (для игрока)
 	heroimage.loadFromFile("images/fish.png"); //выбираем изображение для игрока
+
+	Image enemyoneimage; //объект изображение (для врага)
+	enemyoneimage.loadFromFile("images/shark.png"); //выбираем изображение для врага
+
+	list<entity*> entities; //динамический список для помещения туда врагов
+	list<entity*>::iterator it; //итератор для этого списка
+
+	entities.push_back(new enemy(enemyoneimage, 64, 128, 126, 48, 0.2, 0, "enemy_1")); //враг 1
 
 	player p(heroimage, 64, 64, 60, 42, 0.15, 0, "player_1"); //создаем персонажа (объект подкласса player)
 
@@ -156,6 +220,11 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 				window.close(); //закрываем окно
 		}
 
+		for (it = entities.begin(); it != entities.end(); ++it) //прогоняем список врагов (entities) от начала до конца
+		{
+			(*it)->update(time); //вызываем метод update для каждого объекта списка entities (для каждого врага), если он не оглушен
+		}
+
 		p.update(time); //метод update класса player
 
 		window.clear(); //отчищаем окно от предыдущего кадра
@@ -172,6 +241,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 			}
 		}
 
+		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
 		window.draw(p.get_sprite()); //рисуем персонажа
 
 		window.display(); //отображаем все что можно и что нельзя
@@ -179,7 +249,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	return false;
 }
 
-void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
