@@ -760,7 +760,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		for (it = ammolist.begin(); it != ammolist.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем пузыри
 		window.draw(p.get_sprite()); //рисуем персонажа
 
-		window.display(); //отображаем все что можно и что нельзя
+		window.display(); //отображаем все что можно и что нельзя...
 	}
 	return false;
 }
