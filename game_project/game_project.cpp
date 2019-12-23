@@ -1,5 +1,5 @@
-#include "menu.h"
-#include "class.h"
+#include "menu.h" //подключаем файл меню
+#include "class.h" //подключаем файл объявлений классов и функций
 using namespace std; //пространство имен std, чтобы не писать каждый раз std::
 using namespace sf; //пространство имен sf, чтобы не писать каждый раз sf::
 
