@@ -26,5 +26,8 @@
     <ClInclude Include="life_bar.h">
       <Filter>Исходные файлы</Filter>
     </ClInclude>
+    <ClInclude Include="menu.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
