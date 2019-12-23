@@ -175,11 +175,38 @@ public:
 		physical_obj(dx, 0);
 		sprite.setPosition(x, y);
 
-		sweem += time; //переменная и условия для эффекта плавания
-		if (sweem > 100) sprite.setPosition(x, y + 3); //+150
-		if (sweem > 250) sprite.setPosition(x, y + 3); //+300
-		if (sweem > 550) sprite.setPosition(x, y - 3); //+450
-		if (sweem > 1000) { sprite.setPosition(x, y - 3); sweem = 0; }
+		if (name == "enemy_1" || name == "enemy_2") //для акул №1 и №2
+		{
+			sweem += time; //переменная и условия для эффекта плавания
+			if (sweem > 100) sprite.setPosition(x, y + 3); //+150
+			if (sweem > 250) sprite.setPosition(x, y + 3); //+300
+			if (sweem > 550) sprite.setPosition(x, y - 3); //+450
+			if (sweem > 1000) { sprite.setPosition(x, y - 3); sweem = 0; }
+		}
+		if (name == "enemy_3" || name == "enemy_7") //для акул №3 и №7
+		{
+			sweem += time; //переменная и условия для эффекта плавания
+			if (sweem > 100) sprite.setPosition(x, y + 3); //+100
+			if (sweem > 200) sprite.setPosition(x, y + 3); //+100
+			if (sweem > 300) sprite.setPosition(x, y - 3); //+100
+			if (sweem > 400) { sprite.setPosition(x, y - 3); sweem = 0; }
+		}
+		if (name == "enemy_5" || name == "enemy_9") //для акул №5 и №9
+		{
+			sweem += time; //переменная и условия для эффекта плавания
+			if (sweem > 220) sprite.setPosition(x, y + 3); //+100
+			if (sweem > 320) sprite.setPosition(x, y + 3); //+240
+			if (sweem > 560) sprite.setPosition(x, y - 3); //+340
+			if (sweem > 900) { sprite.setPosition(x, y - 3); sweem = 0; }
+		}
+		if (name == "enemy_4" || name == "enemy_6" || name == "enemy_8" || name == "enemy_10") //для акул №4, №6, №8 и №10
+		{
+			sweem += time; //переменная и условия для эффекта плавания
+			if (sweem > 150) sprite.setPosition(x, y + 3); //+150
+			if (sweem > 300) sprite.setPosition(x, y + 3); //+150
+			if (sweem > 450) sprite.setPosition(x, y - 3); //+150
+			if (sweem > 600) { sprite.setPosition(x, y - 3); sweem = 0; }
+		}
 	}
 
 	Sprite get_sprite()
@@ -222,9 +249,18 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
 
-	entities.push_back(new enemy(enemyoneimage, 64, 128, 126, 48, 0.2, 0, "enemy_1")); //враг 1
+	entities.push_back(new enemy(enemyoneimage, 1856, 64, 126, 48, 0.3, 0, "enemy_1")); //враг 1
+	entities.push_back(new enemy(enemyoneimage, 64, 128, 126, 48, 0.3, 0, "enemy_2")); //враг 2
+	entities.push_back(new enemy(enemyoneimage, 64, 320, 126, 48, 0.22, 0, "enemy_3")); //враг 3
+	entities.push_back(new enemy(enemyoneimage, 320, 576, 126, 48, 0.2, 0, "enemy_4")); //враг 4
+	entities.push_back(new enemy(enemyoneimage, 64, 832, 126, 48, 0.27, 0, "enemy_5")); //враг 5
+	entities.push_back(new enemy(enemyoneimage, 768, 704, 126, 48, 0.24, 0, "enemy_6")); //враг 6
+	entities.push_back(new enemy(enemyoneimage, 1344, 256, 126, 48, 0.22, 0, "enemy_7")); //враг 7
+	entities.push_back(new enemy(enemyoneimage, 1152, 384, 126, 48, 0.22, 0, "enemy_8")); //враг 8
+	entities.push_back(new enemy(enemyoneimage, 1856, 512, 126, 48, 0.22, 0, "enemy_9")); //враг 9
+	entities.push_back(new enemy(enemyoneimage, 1600, 768, 126, 48, 0.2, 0, "enemy_10")); //враг 10
 
-	player p(heroimage, 64, 64, 60, 42, 0.15, 0, "player_1"); //создаем персонажа (объект подкласса player)
+	player p(heroimage, 64, 1024, 60, 42, 0.15, 0, "player_1"); //создаем персонажа (объект подкласса player)
 
 	Clock clock; //переменная времени
 	int minutes = 0; //кол-во минут, прошедших с момента начала игры
@@ -314,7 +350,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	return false;
 }
 
-void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
