@@ -13,12 +13,15 @@ class entity //класс родитель
 protected:
 	float x, y, dx, dy; //позиция по (x, y); скорость по (dx, dy);
 	float sweem, speed, movetimer; //эффект плавания; скорость; счетчик для разного
+	float movetimer_buff; //отсчет до выпадения бафа
 	int health, w, h; //здоровье; ширина спрайта; высота спрайта
 	int count_gametime; //счетчик времени игры
 	int randomx; //случайный элемент по x
 	bool life; //игрок жив или нет
 	bool eaten; //еда съедена или нет
 	bool kusy; //акула кусь или не кусь
+	bool buff; //баф есть у нас или нету
+	bool buff_drop; //баф выпал на карту или нет
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -26,8 +29,8 @@ public:
 	entity(Image& image, float X, float Y, int W, int H, float Dx, float Dy, String Name) //конструктор с параметрами
 	{
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
-		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0;
-		life = true; eaten = false; kusy = false;
+		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0;
+		life = true; eaten = false; kusy = false; buff = false; buff_drop = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
 	}
@@ -196,6 +199,26 @@ public:
 	{
 		return kusy;
 	}
+	void inc_movetimer_buff(float time)
+	{
+		movetimer_buff += time;
+	}
+	bool get_buff()
+	{
+		return buff;
+	}
+	void set_buff_drop(bool BD)
+	{
+		buff_drop = BD;
+	}
+	bool get_buff_drop()
+	{
+		return buff_drop;
+	}
+	float get_movetimer_buff()
+	{
+		return movetimer_buff;
+	}
 };
 
 class enemy :public entity //дочерний класс (враг)
@@ -326,7 +349,7 @@ public:
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
-bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
+bool is_game(RenderWindow & window) //ф-ия is_game, принимающая в качестве параметра ссылку на объект окно из ф-ии main. Там же она и вызывается
 {
 	View view; //объект камера.
 	view.reset(FloatRect(64, 64, 1920, 1080)); //инициализация камеры. Поставить камеру, начиная с точки 64, 64, размер камеры 1920х1080
@@ -352,6 +375,9 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 
 	Image eatimage; //объект изображение (для еды)
 	eatimage.loadFromFile("images/eat.png"); //выбираем изображение для еды
+
+	Image buffimage; //объект изображение (для бафа)
+	buffimage.loadFromFile("images/bubble_bonus.png"); //выбираем изображение для бафа
 
 	list<entity*> entities; //динамический список для помещения туда врагов
 	list<entity*>::iterator it; //итератор для этого списка
@@ -410,6 +436,16 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		{
 			if (event.type == Event::Closed) //если event закрылся
 				window.close(); //закрываем окно
+		}
+
+		if (!p.get_buff()) //если бафа у нас при себе нету
+		{
+			p.inc_movetimer_buff(time); //начинаем отсчет до выподения бафа
+		}
+		if (p.get_movetimer_buff() > 12500 && !p.get_buff_drop()) //если прошло 77500 мкс (~ 60 с) и баф НЕ на карте, то создаем баф
+		{
+			objlist.push_back(new object(buffimage, p.generatorhavki(), 64, 58, 58, 0, 0.25, "buff_1")); //создаем рандомно по X новый объект (баф)
+			p.set_buff_drop(true); //говорим, что баф выпал на карту
 		}
 
 		for (it = objlist.begin(); it != objlist.end();) //прогоняем список объектов
@@ -503,12 +539,12 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
 		window.draw(p.get_sprite()); //рисуем персонажа
 
-		window.display(); //отображаем все что можно и что нельзя...
+		window.display(); //отображаем все что можно и что нельзя
 	}
 	return false;
 }
 
-void restart_func(RenderWindow& window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
+void restart_func(RenderWindow & window) //промежуточная ф-ия для создания рекурсии (для возможности перезапуска игры)
 {
 	if (is_game(window)) //если основная ф-ия is_game возвращает true (в случае нажатия кнопки новая игра)
 		restart_func(window); //вызываем ф-ию restart_func, которая в свую очередь снова вызовет is_game
