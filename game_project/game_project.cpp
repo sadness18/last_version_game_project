@@ -30,6 +30,7 @@ protected:
 	bool buff_drop; //баф выпал на карту или нет
 	bool bubble_crash; //пузырь столкнулся со стеной или нет
 	bool stun; //акула оглушена или нет
+	bool pause; //пауза или нет
 	Texture texture; //текстура
 	Sprite sprite; //спрайт
 	String name; //имя объекта
@@ -39,7 +40,7 @@ public:
 		x = X; y = Y; w = W; h = H; name = Name; dx = Dx; dy = Dy;
 		movetimer = 0; health = 50; sweem = 0; count_gametime = 0; randomx = 0; movetimer_buff = 0; bubbles = 0; check_bubble_fly = 0;
 		check_shark_stun = 0; movetimer_stun = 0;
-		life = true; eaten = false; kusy = false; buff = false; buff_drop = false; bubble_crash = false; stun = false;
+		life = true; eaten = false; kusy = false; buff = false; buff_drop = false; bubble_crash = false; stun = false; pause = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
 	}
@@ -290,6 +291,14 @@ public:
 	{
 		return check_bubble_fly;
 	}
+	void set_pause()
+	{
+		pause = !pause;
+	}
+	bool get_pause()
+	{
+		return pause;
+	}
 };
 
 class enemy :public entity //дочерний класс (враг)
@@ -535,6 +544,8 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 
 	list<entity*> ammolist; //список, хранящий заряды пузырей
 
+	menu m; //объект класса menu
+
 	Clock clock; //переменная времени
 	int minutes = 0; //кол-во минут, прошедших с момента начала игры
 	int seconds = 0; //кол-во секунд, которые переводятся в минуты, когда достигают 60
@@ -547,11 +558,14 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 	while (window.isOpen())
 	{
 		float time; //переменная для занесения в нее времени, для последующей реализации передвижения спрайтов (т.н. привязка ко времени)
-		time = clock.getElapsedTime().asMicroseconds(); //дать прошедшее время в микросекундах
+		if (!p.get_pause()) //Если пауза НЕ стоит
+			time = clock.getElapsedTime().asMicroseconds(); //дать прошедшее время в микросекундах
+		else //если пауза стоит
+			time = 0; //обнуляем время, чтобы ничего не двигалось на экране
 		clock.restart(); //перезагружает время (обнуляет)
 		time = time / 800; //скорость игры. Для справки (напоминалка) --> 1 000 000 мкс (1 с) / 800 = 1250 мкс (1 с)
 
-		if (p.get_life()) //если игрок жив
+		if (p.get_life() && !p.get_pause()) //если игрок жив
 		{
 			save_time += time; //в переменной save_time накапливаем микросекунды
 			if (save_time >= 1250) //если накопилось 1250 мкс или больше (1 секунда)
@@ -590,6 +604,15 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 				{
 					p.set_buff_drop(false); //говорим, что баф можно выкидывать на карту через время
 					p.set_buff(false); //и у нас при себе тоже бафа нету
+				}
+			}
+
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape) //если нажата клавиша esc (ставим на паузу так сказать)
+			{
+				if (p.get_life()) //чтобы мы могли ставить паузу только если игра началась и игрок жив
+				{
+					p.set_pause(); //меняем значение поля pause (true или false)
+					m.swap_check_pause();
 				}
 			}
 		}

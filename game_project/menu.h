@@ -7,11 +7,13 @@ private:
 	Texture menu_texture_1, menu_texture_2, menu_texture_3, about_texture, menu_back;
 	Sprite menu_sprite_1, menu_sprite_2, menu_sprite_3, about_sprite, background_sprite;
 	bool is_menu;
+	bool check_pause;
 	int menu_num;
 public:
 	menu()
 	{
 		is_menu = true; menu_num = 0;
+		check_pause = false;
 
 		menu_texture_1.loadFromFile("images/m1.png");
 		menu_texture_2.loadFromFile("images/m2.png");
@@ -62,5 +64,10 @@ public:
 
 			window.display();
 		}
+	}
+
+	void swap_check_pause()
+	{
+		check_pause = !check_pause;
 	}
 };
