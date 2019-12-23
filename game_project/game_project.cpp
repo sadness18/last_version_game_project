@@ -503,7 +503,7 @@ bool is_game(RenderWindow& window) //ф-ия is_game, принимающая в 
 		for (it = entities.begin(); it != entities.end(); ++it) { window.draw((*it)->get_sprite()); } //рисуем врагов
 		window.draw(p.get_sprite()); //рисуем персонажа
 
-		window.display(); //отображаем все что можно и что нельзя
+		window.display(); //отображаем все что можно и что нельзя...
 	}
 	return false;
 }
